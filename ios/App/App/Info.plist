@@ -51,5 +51,20 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>spotify</string>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>benji-cardio</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>com.cardio.app</string>
+		</dict>
+	</array>
 </dict>
 </plist>

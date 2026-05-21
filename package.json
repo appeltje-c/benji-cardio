@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "npm run build && cap sync ios",
+    "ios:open": "cap open ios",
+    "ios:run": "npm run build && cap sync ios && cap run ios",
+    "ios:device": "npm run build && cap sync ios && cap run ios --target"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.1.3",

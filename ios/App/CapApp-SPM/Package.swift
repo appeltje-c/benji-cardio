@@ -11,8 +11,8 @@ let package = Package(
             targets: ["CapApp-SPM"])
     ],
     dependencies: [
-        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.3.1"),
-        .package(name: "CapacitorCommunityBluetoothLe", path: "../../../node_modules/@capacitor-community/bluetooth-le")
+        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.3.3"),
+        .package(name: "CapacitorCommunityBluetoothLe", path: "../../../node_modules/.pnpm/@capacitor-community+bluetooth-le@8.1.3_@capacitor+core@8.3.3/node_modules/@capacitor-community/bluetooth-le")
     ],
     targets: [
         .target(

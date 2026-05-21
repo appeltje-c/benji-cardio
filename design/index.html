@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Vital — Heart-rate training PWA · 3 directions</title>
+  <link rel="icon" href="/projects/019dea31-c26f-77cc-b2ca-88120a11f800/assets/favicon.png" />
+  <link rel="stylesheet" href="app.css" />
+  <script src="https://unpkg.com/lucide@0.453.0/dist/umd/lucide.js"></script>
+  <style>
+    /* Per-design-canvas overrides */
+    .ios-device { transform: none !important; }
+    /* Tighter scrollbar styling inside artboards is handled by design-canvas */
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- Starters -->
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <!-- App pieces -->
+  <script type="text/babel" src="shared.jsx"></script>
+  <script type="text/babel" src="v3-cinematic.jsx"></script>
+
+  <script type="text/babel" data-presets="react">
+    // ----- Tweakable defaults (editable on disk) -----
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "dark": false,
+      "units": "metric",
+      "liveHr": 164
+    }/*EDITMODE-END*/;
+
+    // ----- Iframe holder — render a phone -----
+    const PHONE_W = 390;
+    const PHONE_H = 844;
+
+    function Phone({ children, dark = false }) {
+      return (
+        <IOSDevice width={PHONE_W} height={PHONE_H} dark={dark}>
+          <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+            {children}
+          </div>
+        </IOSDevice>
+      );
+    }
+
+    // Variation rows — each variation = a section with 8 artboards
+    function VariationRow({ id, title, subtitle, screens, dark }) {
+      return (
+        <DCSection id={id} title={title} subtitle={subtitle}>
+          {screens.map(s => (
+            <DCArtboard key={s.id} id={`${id}-${s.id}`} label={s.label} width={PHONE_W} height={PHONE_H}>
+              <Phone dark={dark}><s.Comp /></Phone>
+            </DCArtboard>
+          ))}
+        </DCSection>
+      );
+    }
+
+    const SCREEN_ORDER = [
+      { id: "01", label: "01 Onboarding",   keys: ["Onboarding"] },
+      { id: "02", label: "02 Profile",      keys: ["Profile"]    },
+      { id: "03", label: "03 Pairing",      keys: ["Pairing"]    },
+      { id: "04", label: "04 Library",      keys: ["Library"]    },
+      { id: "05", label: "05 Builder",      keys: ["Builder"]    },
+      { id: "06", label: "06 Session",      keys: ["Session"]    },
+      { id: "07", label: "07 Summary",      keys: ["Summary"]    },
+      { id: "08", label: "08 Home",         keys: ["Home"]       },
+    ];
+
+    function buildScreens(prefix) {
+      return SCREEN_ORDER.map(s => ({
+        id: s.id, label: s.label,
+        Comp: window[prefix + s.keys[0]],
+      }));
+    }
+
+    function App() {
+      const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+      const ctx = React.useMemo(() => ({
+        dark: tweaks.dark, units: tweaks.units, liveHr: tweaks.liveHr,
+      }), [tweaks.dark, tweaks.units, tweaks.liveHr]);
+
+      // Re-create icons after every render so Lucide picks up new nodes
+      React.useEffect(() => {
+        if (window.lucide) window.lucide.createIcons();
+      });
+
+      return (
+        <TweakCtx.Provider value={ctx}>
+          <DesignCanvas
+            title="Vital — Heart-rate training PWA"
+            subtitle="8 screens · iPhone 15 frame · Cinematic direction · Built on Xingu DS · React 19 + MUI 9 ready"
+          >
+            <VariationRow
+              id="v3"
+              title="Vital — Cinematic"
+              subtitle="Pitch black · mono labels · race-clock telemetry · editorial blocks"
+              screens={buildScreens("V3")}
+              dark={true}
+            />
+          </DesignCanvas>
+
+          <TweaksPanel title="Tweaks">
+            <TweakSection title="Display">
+              <TweakToggle label="Dark status bar (V3 phones)"
+                value={tweaks.dark} onChange={v => setTweak("dark", v)} />
+            </TweakSection>
+            <TweakSection title="Units">
+              <TweakRadio label="System"
+                value={tweaks.units}
+                onChange={v => setTweak("units", v)}
+                options={[
+                  { value: "metric", label: "Metric · kg/cm" },
+                  { value: "imperial", label: "Imperial · lb/ft" },
+                ]} />
+            </TweakSection>
+            <TweakSection title="Session — live HR">
+              <TweakSlider label="Heart rate (bpm)"
+                min={90} max={200} step={1}
+                value={tweaks.liveHr}
+                onChange={v => setTweak("liveHr", v)} />
+              <TweakRadio label="Quick states"
+                value={tweaks.liveHr < 149 ? "push" : tweaks.liveHr > 168 ? "ease" : "ok"}
+                onChange={v => setTweak("liveHr", v === "push" ? 138 : v === "ease" ? 176 : 158)}
+                options={[
+                  { value: "push", label: "Push" },
+                  { value: "ok",   label: "On range" },
+                  { value: "ease", label: "Ease off" },
+                ]} />
+            </TweakSection>
+          </TweaksPanel>
+        </TweakCtx.Provider>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

@@ -13,10 +13,12 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import { useTrainingStore } from '../stores/trainingStore';
 import { usePlayerStore } from '../stores/playerStore';
 import { useHeartRateStore } from '../stores/heartRateStore';
 import { useProfileStore } from '../stores/profileStore';
+import { useSpotifyStore } from '../stores/spotifyStore';
 import { getZoneColor, getZoneConfig, formatTimeMs, formatTime, getEffortGuidance, getTargetBpmRange } from '../utils/zones';
 import ZoneCurvePreview from '../components/ZoneCurvePreview';
 import HeartRateChart from '../components/HeartRateChart';
@@ -28,6 +30,7 @@ export default function TrainingPlayer() {
   const player = usePlayerStore();
   const { bpm, zone: hrZone, isConnected, resetHistory, calories } = useHeartRateStore();
   const maxHR = useProfileStore((s) => s.getMaxHR());
+  const spotify = useSpotifyStore();
   const rafRef = useRef<number>(0);
   const lastTickRef = useRef<number>(0);
   const prevSegmentIndexRef = useRef<number>(-1);
@@ -63,6 +66,13 @@ export default function TrainingPlayer() {
     prevSegmentIndexRef.current = player.currentSegmentIndex;
   }, [player.currentSegmentIndex, player.status, player.training]);
 
+  // Pause Spotify when training finishes
+  useEffect(() => {
+    if (player.status === 'finished' && spotify.isConnected) {
+      spotify.pause();
+    }
+  }, [player.status, spotify.isConnected]);
+
   if (!training || !id) {
     return (
       <Box sx={{ p: 3, pt: 'calc(env(safe-area-inset-top) + 24px)' }}>
@@ -76,19 +86,23 @@ export default function TrainingPlayer() {
     prevSegmentIndexRef.current = -1;
     resetHistory();
     player.startTraining(training);
+    if (spotify.isConnected) spotify.resume();
   };
 
   const handlePause = () => {
     player.pause();
+    if (spotify.isConnected) spotify.pause();
   };
 
   const handleResume = () => {
     player.play();
+    if (spotify.isConnected) spotify.resume();
   };
 
   const handleStop = () => {
     player.stop();
     prevSegmentIndexRef.current = -1;
+    if (spotify.isConnected) spotify.pause();
   };
 
   const segmentDurationMs = currentSegment ? currentSegment.durationSeconds * 1000 : 1;
@@ -335,6 +349,16 @@ export default function TrainingPlayer() {
           }}
         />
       </Box>
+
+      {/* Spotify current track */}
+      {spotify.isConnected && spotify.currentTrack && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 0.5 }}>
+          <MusicNoteIcon sx={{ fontSize: 16, color: '#1DB954' }} />
+          <Typography variant="caption" noWrap sx={{ color: '#1DB954', flex: 1 }}>
+            {spotify.currentTrack.name} — {spotify.currentTrack.artist}
+          </Typography>
+        </Box>
+      )}
 
       {/* Controls */}
       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 2, pb: 'calc(env(safe-area-inset-bottom) + 16px)' }}>
