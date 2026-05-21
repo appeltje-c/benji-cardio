@@ -1,11 +1,11 @@
 import type { Zone, ZoneConfig } from '../types';
 
 export const ZONE_CONFIGS: ZoneConfig[] = [
-  { zone: 1, label: 'Very Light', minPct: 50, maxPct: 60, color: '#90CAF9' },
-  { zone: 2, label: 'Light',      minPct: 60, maxPct: 70, color: '#2196F3' },
-  { zone: 3, label: 'Moderate',   minPct: 70, maxPct: 80, color: '#4CAF50' },
-  { zone: 4, label: 'Hard',       minPct: 80, maxPct: 90, color: '#FF9800' },
-  { zone: 5, label: 'Maximum',    minPct: 90, maxPct: 100, color: '#F44336' },
+  { zone: 1, label: 'Recovery',  minPct: 50, maxPct: 60,  color: '#027DEB', hint: 'Active recovery, warm-ups' },
+  { zone: 2, label: 'Endurance', minPct: 60, maxPct: 70,  color: '#39C239', hint: 'Long base aerobic work' },
+  { zone: 3, label: 'Tempo',     minPct: 70, maxPct: 80,  color: '#F2B40D', hint: 'Steady, sustainable effort' },
+  { zone: 4, label: 'Threshold', minPct: 80, maxPct: 90,  color: '#FF551F', hint: 'Lactate threshold work' },
+  { zone: 5, label: 'VO₂ Max',   minPct: 90, maxPct: 100, color: '#DF2020', hint: 'All-out intervals' },
 ];
 
 export function getZoneConfig(zone: Zone): ZoneConfig {

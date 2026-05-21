@@ -1,380 +1,674 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import LinearProgress from '@mui/material/LinearProgress';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import StopIcon from '@mui/icons-material/Stop';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import CheckIcon from '@mui/icons-material/Check';
 import { useTrainingStore } from '../stores/trainingStore';
 import { usePlayerStore } from '../stores/playerStore';
 import { useHeartRateStore } from '../stores/heartRateStore';
 import { useProfileStore } from '../stores/profileStore';
 import { useSpotifyStore } from '../stores/spotifyStore';
-import { getZoneColor, getZoneConfig, formatTimeMs, formatTime, getEffortGuidance, getTargetBpmRange } from '../utils/zones';
-import ZoneCurvePreview from '../components/ZoneCurvePreview';
-import HeartRateChart from '../components/HeartRateChart';
+import { useSessionStore, aggregateSession } from '../stores/sessionStore';
+import { ZONE_CONFIGS, getTargetBpmRange, getEffortGuidance } from '../utils/zones';
+import V3ECG from '../components/v3/V3ECG';
+import Telem from '../components/v3/Telem';
+import ZoneTag from '../components/v3/ZoneTag';
+import Summary from './Summary';
+
+function fmtTime(ms: number) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m.toString().padStart(2, '0')}:${r.toString().padStart(2, '0')}`;
+}
+
+function fmtTimeShort(s: number) {
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${r.toString().padStart(2, '0')}`;
+}
 
 export default function TrainingPlayer() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const training = useTrainingStore((s) => s.trainings.find((t) => t.id === id));
   const player = usePlayerStore();
-  const { bpm, zone: hrZone, isConnected, resetHistory, calories } = useHeartRateStore();
+  const { bpm, isConnected, resetHistory } = useHeartRateStore();
   const maxHR = useProfileStore((s) => s.getMaxHR());
   const spotify = useSpotifyStore();
   const rafRef = useRef<number>(0);
   const lastTickRef = useRef<number>(0);
-  const prevSegmentIndexRef = useRef<number>(-1);
+  const recordedSessionRef = useRef<string | null>(null);
 
   const currentSegment = player.training?.segments[player.currentSegmentIndex];
   const targetZone = currentSegment?.targetZone ?? 1;
-  const targetColor = getZoneColor(targetZone);
-  const targetConfig = getZoneConfig(targetZone);
+  const targetConfig = ZONE_CONFIGS[targetZone - 1];
 
-  // Game loop
-  const tick = useCallback(() => {
-    const now = performance.now();
-    const delta = now - lastTickRef.current;
-    lastTickRef.current = now;
-    usePlayerStore.getState().tick(delta);
-    rafRef.current = requestAnimationFrame(tick);
-  }, []);
-
-  // Start/stop game loop
   useEffect(() => {
-    if (player.status === 'playing') {
-      lastTickRef.current = performance.now();
-      rafRef.current = requestAnimationFrame(tick);
-    }
+    if (player.status !== 'playing') return;
+    lastTickRef.current = performance.now();
+    const loop = () => {
+      const now = performance.now();
+      const delta = now - lastTickRef.current;
+      lastTickRef.current = now;
+      usePlayerStore.getState().tick(delta);
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [player.status, tick]);
+  }, [player.status]);
 
-  // Track segment changes
   useEffect(() => {
-    if (player.status !== 'playing' || !player.training) return;
-    prevSegmentIndexRef.current = player.currentSegmentIndex;
-  }, [player.currentSegmentIndex, player.status, player.training]);
+    if (player.status !== 'finished') return;
+    if (spotify.isConnected) spotify.pause();
 
-  // Pause Spotify when training finishes
-  useEffect(() => {
-    if (player.status === 'finished' && spotify.isConnected) {
-      spotify.pause();
+    // Record the session exactly once per finish. The trainingId guards
+    // against re-firing during navigation/remounts within Summary.
+    const liveTraining = player.training;
+    if (
+      liveTraining &&
+      liveTraining.id === training?.id &&
+      recordedSessionRef.current !== liveTraining.id
+    ) {
+      const hrState = useHeartRateStore.getState();
+      const elapsed = usePlayerStore.getState().elapsedMs;
+      useSessionStore.getState().addSession(
+        aggregateSession(
+          liveTraining,
+          hrState.history,
+          maxHR,
+          elapsed,
+          hrState.calories
+        )
+      );
+      recordedSessionRef.current = liveTraining.id;
     }
+    // spotify is a stable Zustand store object; pause() reads the latest state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player.status, spotify.isConnected]);
 
   if (!training || !id) {
     return (
-      <Box sx={{ p: 3, pt: 'calc(env(safe-area-inset-top) + 24px)' }}>
-        <Typography>Training not found</Typography>
-        <Button onClick={() => navigate('/')}>Go back</Button>
-      </Box>
+      <div className="v3-shell v3-bg" style={{ padding: 24, color: '#fff' }}>
+        <div>Training not found</div>
+        <button type="button" onClick={() => navigate('/library')} className="v3-btn v3-btn-ghost">
+          Back
+        </button>
+      </div>
     );
   }
 
+  const totalDuration = training.segments.reduce((s, seg) => s + seg.durationSeconds, 0);
+
   const handleStart = () => {
-    prevSegmentIndexRef.current = -1;
     resetHistory();
+    recordedSessionRef.current = null;
     player.startTraining(training);
     if (spotify.isConnected) spotify.resume();
   };
 
-  const handlePause = () => {
-    player.pause();
-    if (spotify.isConnected) spotify.pause();
-  };
-
-  const handleResume = () => {
-    player.play();
-    if (spotify.isConnected) spotify.resume();
+  const handlePauseResume = () => {
+    if (player.status === 'playing') {
+      player.pause();
+      if (spotify.isConnected) spotify.pause();
+    } else {
+      player.play();
+      if (spotify.isConnected) spotify.resume();
+    }
   };
 
   const handleStop = () => {
     player.stop();
-    prevSegmentIndexRef.current = -1;
     if (spotify.isConnected) spotify.pause();
+    navigate(`/library`);
   };
 
-  const segmentDurationMs = currentSegment ? currentSegment.durationSeconds * 1000 : 1;
-  const segmentProgress = (player.segmentElapsedMs / segmentDurationMs) * 100;
-  const totalDuration = training.segments.reduce((s, seg) => s + seg.durationSeconds, 0);
-  const hrColor = bpm > 0 ? getZoneColor(hrZone) : '#666';
-
-  // Idle state — not started yet
+  // ---------- Idle / preview ----------
   if (player.status === 'idle' || player.training?.id !== id) {
     return (
-      <Box sx={{ p: 3, pt: 'calc(env(safe-area-inset-top) + 24px)', display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton onClick={() => navigate(-1)}>
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            {training.name}
-          </Typography>
-        </Box>
-        <ZoneCurvePreview segments={training.segments} height={80} />
-        <Typography color="text.secondary">
-          {training.segments.length} segments · {formatTime(totalDuration)} ·{' '}
-          {isConnected ? 'HRM connected' : 'HRM not connected'}
-        </Typography>
-        <Button variant="contained" size="large" startIcon={<PlayArrowIcon />} onClick={handleStart} sx={{ py: 2 }}>
-          Start Training
-        </Button>
-      </Box>
-    );
-  }
-
-  // Finished state
-  if (player.status === 'finished') {
-    return (
-      <Box sx={{ p: 3, pt: 'calc(env(safe-area-inset-top) + 24px)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Training Complete!
-        </Typography>
-        <Typography variant="h6" color="text.secondary">
-          Total time: {formatTimeMs(player.elapsedMs)}
-        </Typography>
-        {calories > 0 && (
-          <Typography variant="h6" sx={{ color: '#FF9800' }}>
-            {Math.round(calories)} kcal burned
-          </Typography>
-        )}
-        <Button variant="contained" onClick={handleStop}>
-          Done
-        </Button>
-      </Box>
-    );
-  }
-
-  // Playing / Paused state
-  return (
-    <Box
-      sx={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        bgcolor: `${targetColor}11`,
-        transition: 'background-color 0.5s',
-      }}
-    >
-      {/* Top bar */}
-      <Box sx={{ display: 'flex', alignItems: 'center', p: 1.5, pt: 'calc(env(safe-area-inset-top) + 12px)', gap: 1 }}>
-        <IconButton size="small" onClick={handleStop}>
-          <StopIcon />
-        </IconButton>
-        <Typography variant="body2" sx={{ flex: 1, fontWeight: 600 }}>
-          {training.name}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {formatTimeMs(player.elapsedMs)}
-        </Typography>
-        {calories > 0 && (
-          <Typography variant="body2" sx={{ color: '#FF9800', fontWeight: 600 }}>
-            {Math.round(calories)} kcal
-          </Typography>
-        )}
-      </Box>
-
-      {/* Zone curve with current position */}
-      <Box sx={{ px: 2 }}>
-        <ZoneCurvePreview
-          segments={training.segments}
-          currentIndex={player.currentSegmentIndex}
-          height={50}
-        />
-      </Box>
-
-      {/* HR history chart */}
-      <Box sx={{ px: 2, mt: 1 }}>
-        <HeartRateChart totalDurationMs={totalDuration * 1000} height={60} />
-      </Box>
-
-      {/* Main HR display */}
-      <Box
-        sx={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 2,
+      <div
+        className="v3-shell v3-bg"
+        style={{
+          position: 'relative',
+          width: '100%',
+          minHeight: '100%',
+          color: '#fff',
         }}
       >
-        {/* Live HR */}
-        <FavoriteIcon
-          sx={{
-            fontSize: 40,
-            color: hrColor,
-            animation: bpm > 0 ? 'pulse 0.8s infinite' : 'none',
-            '@keyframes pulse': {
-              '0%,100%': { transform: 'scale(1)' },
-              '50%': { transform: 'scale(1.2)' },
-            },
-          }}
-        />
-        <Typography
-          variant="h1"
-          sx={{
-            fontSize: 96,
-            fontWeight: 700,
-            lineHeight: 1,
-            color: hrColor,
+        <div
+          style={{
+            padding: '0 20px',
+            paddingTop: 'calc(env(safe-area-inset-top, 0px) + 32px)',
+            paddingBottom: 40,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 18,
           }}
         >
-          {bpm || '--'}
-        </Typography>
-        <Typography sx={{ color: hrColor, fontWeight: 600, fontSize: 18 }}>
-          {bpm > 0 ? `Zone ${hrZone} — ${getZoneConfig(hrZone).label}` : 'No HR signal'}
-        </Typography>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 6,
+              border: '1px solid rgba(255,255,255,0.16)',
+              background: 'rgba(255,255,255,0.06)',
+              color: '#fff',
+              display: 'grid',
+              placeItems: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <KeyboardArrowDownIcon sx={{ fontSize: 20 }} />
+          </button>
 
-        {/* Effort guidance */}
-        {(() => {
-          const guidance = getEffortGuidance(bpm, targetZone, maxHR);
-          const [minBpm, maxBpm] = getTargetBpmRange(targetZone, maxHR);
+          <div>
+            <div className="v3-eyebrow" style={{ color: 'var(--xg-accent-400)' }}>
+              READY
+            </div>
+            <h1
+              style={{
+                fontSize: 40,
+                fontWeight: 800,
+                letterSpacing: '-0.03em',
+                lineHeight: 0.95,
+                color: '#fff',
+                marginTop: 6,
+              }}
+            >
+              {training.name}
+            </h1>
+          </div>
 
-          if (guidance === 'push') {
-            return (
-              <Box
-                sx={{
-                  mt: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  animation: 'bounce 1s infinite',
-                  '@keyframes bounce': {
-                    '0%,100%': { transform: 'translateY(0)' },
-                    '50%': { transform: 'translateY(-8px)' },
-                  },
-                }}
-              >
-                <KeyboardArrowUpIcon sx={{ fontSize: 48, color: targetColor }} />
-                <Typography sx={{ fontSize: 24, fontWeight: 800, color: targetColor, letterSpacing: 2 }}>
-                  PUSH HARDER
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  Target: {minBpm}–{maxBpm} BPM ({bpm > 0 ? `+${minBpm - bpm}` : '—'})
-                </Typography>
-              </Box>
-            );
-          }
+          {/* Segment strip */}
+          {training.segments.length > 0 && (
+            <div style={{ display: 'flex', height: 36 }}>
+              {training.segments.map((s, i) => (
+                <div
+                  key={s.id}
+                  style={{
+                    flex: s.durationSeconds,
+                    background: `var(--hr-z${s.targetZone}-solid)`,
+                    opacity: 0.85,
+                    borderRight: i < training.segments.length - 1 ? '1px solid #0A0B0F' : 'none',
+                  }}
+                />
+              ))}
+            </div>
+          )}
 
-          if (guidance === 'ease') {
-            return (
-              <Box
-                sx={{
-                  mt: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  animation: 'sway 1.5s ease-in-out infinite',
-                  '@keyframes sway': {
-                    '0%,100%': { transform: 'translateY(0)' },
-                    '50%': { transform: 'translateY(6px)' },
-                  },
-                }}
-              >
-                <KeyboardArrowDownIcon sx={{ fontSize: 48, color: '#64B5F6' }} />
-                <Typography sx={{ fontSize: 24, fontWeight: 800, color: '#64B5F6', letterSpacing: 2 }}>
-                  EASE UP
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  Target: {minBpm}–{maxBpm} BPM (−{bpm - maxBpm})
-                </Typography>
-              </Box>
-            );
-          }
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 1,
+              background: 'rgba(255,255,255,0.08)',
+            }}
+          >
+            <div style={{ background: '#0A0B0F', padding: '14px 16px' }}>
+              <Telem label="DURATION" value={fmtTimeShort(totalDuration)} size={24} />
+            </div>
+            <div style={{ background: '#0A0B0F', padding: '14px 16px' }}>
+              <Telem label="SEGMENTS" value={training.segments.length} size={24} />
+            </div>
+          </div>
 
-          if (guidance === 'in_zone') {
-            return (
-              <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <CheckCircleIcon sx={{ fontSize: 44, color: '#4CAF50' }} />
-                <Typography sx={{ fontSize: 24, fontWeight: 800, color: '#4CAF50', letterSpacing: 2 }}>
-                  IN THE ZONE
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {minBpm}–{maxBpm} BPM
-                </Typography>
-              </Box>
-            );
-          }
+          <div
+            className="v3-mono"
+            style={{
+              fontSize: 10,
+              letterSpacing: '0.18em',
+              color: isConnected ? 'var(--xg-success-300)' : 'rgba(255,255,255,0.5)',
+              textAlign: 'center',
+            }}
+          >
+            {isConnected ? '● HR LINKED' : '○ HR NOT LINKED — TAP CONNECT IN PROFILE'}
+          </div>
 
-          return null;
-        })()}
+          <button
+            type="button"
+            onClick={handleStart}
+            disabled={training.segments.length === 0}
+            className="v3-btn v3-btn-primary"
+            style={{ marginTop: 'auto' }}
+          >
+            <PlayArrowIcon sx={{ fontSize: 18 }} /> START
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-        {/* Target zone */}
-        <Box
-          sx={{
-            mt: 1,
-            px: 4,
-            py: 1,
-            borderRadius: 3,
-            bgcolor: targetColor,
+  // ---------- Finished → Summary ----------
+  if (player.status === 'finished') {
+    return <Summary training={training} onClose={handleStop} />;
+  }
+
+  // ---------- Live session ----------
+  const segDurationMs = currentSegment ? currentSegment.durationSeconds * 1000 : 1;
+  const segmentElapsedSec = Math.floor(player.segmentElapsedMs / 1000);
+  const remainingSec = Math.max(0, (currentSegment?.durationSeconds ?? 0) - segmentElapsedSec);
+  const next = training.segments[player.currentSegmentIndex + 1];
+
+  const [targetLo, targetHi] = getTargetBpmRange(targetZone, maxHR);
+  const targetMid = Math.round((targetLo + targetHi) / 2);
+  const guidance = getEffortGuidance(bpm, targetZone, maxHR);
+
+  let status: { label: string; hint: string; color: string; bg: string; border: string; icon: 'up' | 'down' | 'ok' };
+  if (guidance === 'push') {
+    const delta = targetLo - bpm;
+    status = {
+      label: 'PUSH HARDER',
+      hint: bpm > 0 ? `+${delta} BPM TO REACH ZONE` : 'WAITING FOR HR SIGNAL',
+      color: 'var(--xg-accent-400)',
+      bg: 'rgba(255,85,31,0.14)',
+      border: 'rgba(255,85,31,0.45)',
+      icon: 'up',
+    };
+  } else if (guidance === 'ease') {
+    const delta = bpm - targetHi;
+    status = {
+      label: 'EASE OFF',
+      hint: `−${delta} BPM TO STAY IN ZONE`,
+      color: '#FF6F6F',
+      bg: 'rgba(216,32,32,0.18)',
+      border: 'rgba(216,32,32,0.45)',
+      icon: 'down',
+    };
+  } else if (guidance === 'in_zone') {
+    status = {
+      label: 'ON RANGE',
+      hint: `HOLD STEADY · ±${Math.abs(bpm - targetMid)} FROM MID`,
+      color: '#5BD25B',
+      bg: 'rgba(57,194,57,0.14)',
+      border: 'rgba(57,194,57,0.45)',
+      icon: 'ok',
+    };
+  } else {
+    status = {
+      label: 'NO SIGNAL',
+      hint: 'CONNECT YOUR HRM',
+      color: 'rgba(255,255,255,0.5)',
+      bg: 'rgba(255,255,255,0.04)',
+      border: 'rgba(255,255,255,0.12)',
+      icon: 'ok',
+    };
+  }
+
+  // Target-range bar math
+  const bandLo = Math.min(targetLo - 12, bpm - 8);
+  const bandHi = Math.max(targetHi + 12, bpm + 8);
+  const span = Math.max(1, bandHi - bandLo);
+  const pctLo = ((targetLo - bandLo) / span) * 100;
+  const pctHi = ((targetHi - bandLo) / span) * 100;
+  const pctBpm = ((bpm - bandLo) / span) * 100;
+
+  return (
+    <div
+      className="v3-shell"
+      style={{
+        position: 'relative',
+        width: '100%',
+        minHeight: '100%',
+        color: '#fff',
+        background: `radial-gradient(800px 600px at 50% 0%, var(--hr-z${targetZone}-solid) -20%, transparent 60%), #0A0B0F`,
+      }}
+    >
+      {/* Top */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
+          left: 0,
+          right: 0,
+          zIndex: 4,
+          padding: '14px 16px',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 6,
+            border: '1px solid rgba(255,255,255,0.16)',
+            background: 'rgba(255,255,255,0.06)',
+            display: 'grid',
+            placeItems: 'center',
             color: '#fff',
+            cursor: 'pointer',
           }}
         >
-          <Typography sx={{ fontWeight: 700, textAlign: 'center' }}>
-            TARGET: Zone {targetZone} — {targetConfig.label}
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Segment progress */}
-      <Box sx={{ px: 2, pb: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-          <Typography variant="caption" color="text.secondary">
-            Segment {player.currentSegmentIndex + 1}/{training.segments.length}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {formatTimeMs(player.segmentElapsedMs)} / {formatTime(currentSegment?.durationSeconds ?? 0)}
-          </Typography>
-        </Box>
-        <LinearProgress
-          variant="determinate"
-          value={Math.min(segmentProgress, 100)}
-          sx={{
+          <KeyboardArrowDownIcon sx={{ fontSize: 20 }} />
+        </button>
+        <div
+          className="v3-mono"
+          style={{
+            marginLeft: 12,
+            fontSize: 10,
+            letterSpacing: '0.2em',
+            color: 'rgba(255,255,255,0.6)',
+          }}
+        >
+          {training.name.toUpperCase()} · LIVE
+        </div>
+        <span
+          style={{
+            marginLeft: 'auto',
+            width: 8,
             height: 8,
             borderRadius: 4,
-            bgcolor: 'rgba(255,255,255,0.1)',
-            '& .MuiLinearProgress-bar': { bgcolor: targetColor, borderRadius: 4 },
+            background: 'var(--xg-accent-400)',
+            boxShadow: '0 0 8px var(--xg-accent-400)',
+            animation: 'v3-blink 1.6s ease-in-out infinite',
           }}
         />
-      </Box>
+        <style>{`@keyframes v3-blink { 0%,100% { opacity: 1 } 50% { opacity: 0.3 } }`}</style>
+      </div>
 
-      {/* Spotify current track */}
-      {spotify.isConnected && spotify.currentTrack && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 0.5 }}>
-          <MusicNoteIcon sx={{ fontSize: 16, color: '#1DB954' }} />
-          <Typography variant="caption" noWrap sx={{ color: '#1DB954', flex: 1 }}>
-            {spotify.currentTrack.name} — {spotify.currentTrack.artist}
-          </Typography>
-        </Box>
-      )}
+      <div
+        style={{
+          padding: 'calc(env(safe-area-inset-top, 0px) + 70px) 20px calc(env(safe-area-inset-bottom, 0px) + 120px)',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100%',
+        }}
+      >
+        {/* Segment label */}
+        <div
+          className="v3-mono"
+          style={{
+            fontSize: 11,
+            letterSpacing: '0.24em',
+            color: `var(--hr-z${targetZone}-solid)`,
+            marginBottom: 4,
+          }}
+        >
+          ZONE {targetZone} · {targetConfig.label.toUpperCase()}
+        </div>
+        <div
+          style={{
+            fontSize: 32,
+            fontWeight: 800,
+            letterSpacing: '-0.025em',
+            color: '#fff',
+            lineHeight: 1,
+          }}
+        >
+          {currentSegment?.label || `Segment ${player.currentSegmentIndex + 1}`}
+        </div>
+
+        {/* Big BPM */}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            margin: '10px 0',
+          }}
+        >
+          <V3ECG height={56} color={status.color} />
+          <div style={{ position: 'relative', textAlign: 'center' }}>
+            <div
+              className="v3-num"
+              style={{
+                fontSize: 160,
+                color: '#fff',
+                lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {bpm > 0 ? bpm : '--'}
+            </div>
+            <div
+              className="v3-mono"
+              style={{
+                fontSize: 11,
+                letterSpacing: '0.24em',
+                color: 'rgba(255,255,255,0.5)',
+                marginTop: -8,
+              }}
+            >
+              BPM
+            </div>
+          </div>
+
+          {/* Coaching pill */}
+          <div
+            style={{
+              marginTop: 14,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 16px',
+              background: status.bg,
+              border: `1px solid ${status.border}`,
+              borderRadius: 999,
+            }}
+          >
+            {status.icon === 'up' && <ArrowUpwardIcon sx={{ fontSize: 16, color: status.color }} />}
+            {status.icon === 'down' && <ArrowDownwardIcon sx={{ fontSize: 16, color: status.color }} />}
+            {status.icon === 'ok' && <CheckIcon sx={{ fontSize: 16, color: status.color }} />}
+            <span
+              className="v3-mono"
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: '0.18em',
+                color: status.color,
+              }}
+            >
+              {status.label}
+            </span>
+          </div>
+          <div
+            className="v3-mono"
+            style={{
+              fontSize: 10,
+              letterSpacing: '0.18em',
+              color: 'rgba(255,255,255,0.5)',
+              marginTop: 8,
+            }}
+          >
+            {status.hint}
+          </div>
+
+          {/* Target range bar */}
+          <div style={{ width: '100%', marginTop: 14 }}>
+            <div
+              style={{
+                position: 'relative',
+                height: 8,
+                background: 'rgba(255,255,255,0.06)',
+                borderRadius: 4,
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 0,
+                  left: `${pctLo}%`,
+                  width: `${pctHi - pctLo}%`,
+                  background: `var(--hr-z${targetZone}-solid)`,
+                  opacity: 0.5,
+                  borderRadius: 4,
+                }}
+              />
+              {bpm > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: -4,
+                    bottom: -4,
+                    left: `calc(${pctBpm}% - 2px)`,
+                    width: 4,
+                    background: status.color,
+                    borderRadius: 2,
+                    boxShadow: `0 0 8px ${status.color}`,
+                  }}
+                />
+              )}
+            </div>
+            <div
+              className="v3-mono"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginTop: 6,
+                fontSize: 9,
+                letterSpacing: '0.14em',
+                color: 'rgba(255,255,255,0.45)',
+              }}
+            >
+              <span>TARGET</span>
+              <span style={{ color: 'rgba(255,255,255,0.75)' }}>
+                {targetLo} — {targetHi} BPM
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Segment progress dots */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+          {training.segments.map((s, i) => (
+            <div
+              key={s.id}
+              style={{
+                flex: s.durationSeconds,
+                height: 6,
+                borderRadius: 1,
+                background:
+                  i < player.currentSegmentIndex
+                    ? `var(--hr-z${s.targetZone}-solid)`
+                    : i === player.currentSegmentIndex
+                    ? 'rgba(255,255,255,0.35)'
+                    : 'rgba(255,255,255,0.08)',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {i === player.currentSegmentIndex && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: `${Math.min(100, (player.segmentElapsedMs / segDurationMs) * 100)}%`,
+                    background: `var(--hr-z${targetZone}-solid)`,
+                  }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Telemetry strip */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 1,
+            background: 'rgba(255,255,255,0.1)',
+          }}
+        >
+          <div style={{ background: '#0A0B0F', padding: '10px 12px' }}>
+            <Telem label="REMAINING" value={fmtTimeShort(remainingSec)} size={22} color={`var(--hr-z${targetZone}-solid)`} />
+          </div>
+          <div style={{ background: '#0A0B0F', padding: '10px 12px' }}>
+            <Telem label="ELAPSED" value={fmtTime(player.elapsedMs)} size={22} />
+          </div>
+          <div style={{ background: '#0A0B0F', padding: '10px 12px' }}>
+            {next ? (
+              <Telem
+                label="UP NEXT"
+                value={<ZoneTag zone={next.targetZone} />}
+                size={22}
+                color={`var(--hr-z${next.targetZone}-solid)`}
+              />
+            ) : (
+              <Telem label="UP NEXT" value="—" size={22} />
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Controls */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, p: 2, pb: 'calc(env(safe-area-inset-bottom) + 16px)' }}>
-        {player.status === 'playing' ? (
-          <Button variant="contained" size="large" startIcon={<PauseIcon />} onClick={handlePause}>
-            Pause
-          </Button>
-        ) : (
-          <Button variant="contained" size="large" startIcon={<PlayArrowIcon />} onClick={handleResume}>
-            Resume
-          </Button>
-        )}
-        <Button variant="outlined" size="large" startIcon={<StopIcon />} onClick={handleStop} color="error">
-          Stop
-        </Button>
-      </Box>
-    </Box>
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: '14px 20px calc(env(safe-area-inset-bottom, 0px) + 24px)',
+          display: 'flex',
+          gap: 10,
+          zIndex: 4,
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            // restart this segment
+            usePlayerStore.setState({ segmentElapsedMs: 0 });
+          }}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 8,
+            border: '1px solid rgba(255,255,255,0.16)',
+            background: 'rgba(255,255,255,0.04)',
+            color: '#fff',
+            display: 'grid',
+            placeItems: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <SkipPreviousIcon sx={{ fontSize: 22 }} />
+        </button>
+        <button type="button" onClick={handlePauseResume} className="v3-btn v3-btn-light" style={{ flex: 1 }}>
+          {player.status === 'playing' ? (
+            <>
+              <PauseIcon sx={{ fontSize: 18 }} /> PAUSE
+            </>
+          ) : (
+            <>
+              <PlayArrowIcon sx={{ fontSize: 18 }} /> RESUME
+            </>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={handleStop}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 8,
+            border: 0,
+            background: 'var(--xg-error-500)',
+            color: '#fff',
+            display: 'grid',
+            placeItems: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <StopIcon sx={{ fontSize: 22 }} />
+        </button>
+      </div>
+    </div>
   );
 }

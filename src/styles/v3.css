@@ -1,0 +1,92 @@
+/* Vital — V3 Cinematic styles
+   Lifted from design/app.css. All component styles are scoped to v3- so they
+   can be replaced or themed without touching MUI internals. */
+
+@import url("./tokens.css");
+
+/* ---------------------------------------------------------------------------
+   SHARED — Heart-rate zone palette (uses tokens.css ramps)
+   --------------------------------------------------------------------------- */
+:root {
+  --hr-z1-bg:  var(--xg-info-50);    --hr-z1-fg: var(--xg-info-500);    --hr-z1-bd: var(--xg-info-200);    --hr-z1-solid: var(--xg-info-400);
+  --hr-z2-bg:  var(--xg-success-50); --hr-z2-fg: var(--xg-success-500); --hr-z2-bd: var(--xg-success-200); --hr-z2-solid: var(--xg-success-400);
+  --hr-z3-bg:  var(--xg-yellow-50);  --hr-z3-fg: var(--xg-yellow-700);  --hr-z3-bd: var(--xg-yellow-300);  --hr-z3-solid: var(--xg-yellow-400);
+  --hr-z4-bg:  var(--xg-accent-50);  --hr-z4-fg: var(--xg-accent-700);  --hr-z4-bd: var(--xg-accent-200);  --hr-z4-solid: var(--xg-accent-400);
+  --hr-z5-bg:  var(--xg-error-50);   --hr-z5-fg: var(--xg-error-500);   --hr-z5-bd: var(--xg-error-100);   --hr-z5-solid: var(--xg-error-400);
+}
+
+/* App background — pitch black with two radial accents (orange + indigo) */
+html, body, #root {
+  background: #0A0B0F;
+  color: #fff;
+  font-family: var(--xg-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.v3-shell { background: #0A0B0F; color: #fff; }
+.v3-bg {
+  background:
+    radial-gradient(800px 600px at 70% 0%, rgba(255,85,31,0.18), transparent 60%),
+    radial-gradient(700px 500px at 0% 100%, rgba(6,51,249,0.22), transparent 60%),
+    #0A0B0F;
+}
+
+/* ---------------------------------------------------------------------------
+   Typography helpers
+   --------------------------------------------------------------------------- */
+.v3-mono   { font-family: var(--xg-font-mono); }
+.v3-num    { font-family: var(--xg-font-sans); font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: -0.04em; }
+.v3-bignum { font-size: 128px; line-height: 1; }
+.v3-eyebrow {
+  font-family: var(--xg-font-mono);
+  font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.5);
+}
+
+/* ---------------------------------------------------------------------------
+   Surfaces
+   --------------------------------------------------------------------------- */
+.v3-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 16px;
+}
+.v3-card-strong {
+  background: #14161D;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons
+   --------------------------------------------------------------------------- */
+.v3-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 52px; padding: 0 18px;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+  border: 0; cursor: pointer; width: 100%;
+  font-family: var(--xg-font-mono);
+}
+.v3-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.v3-btn-primary { background: var(--xg-accent-400); color: #0A0B0F; }
+.v3-btn-light   { background: #fff; color: #0A0B0F; }
+.v3-btn-ghost   { background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.12); }
+
+/* ---------------------------------------------------------------------------
+   Zone tag (peak Zx pill)
+   --------------------------------------------------------------------------- */
+.v3-zone-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--xg-font-mono);
+  font-size: 10px; font-weight: 600; letter-spacing: 0.12em;
+  padding: 3px 8px; border-radius: 4px;
+  text-transform: uppercase;
+}
+.v3-zone-tag.zone-1 { background: rgba(2,125,235,0.18); color: #4DA6FF; }
+.v3-zone-tag.zone-2 { background: rgba(57,194,57,0.18); color: #5BD25B; }
+.v3-zone-tag.zone-3 { background: rgba(242,180,13,0.18); color: #F2B40D; }
+.v3-zone-tag.zone-4 { background: rgba(255,85,31,0.20); color: #FF8A66; }
+.v3-zone-tag.zone-5 { background: rgba(216,32,32,0.22); color: #FF6F6F; }

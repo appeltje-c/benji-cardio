@@ -1,0 +1,257 @@
+/* ===========================================================================
+   Xingu Brand Kit — Color & Type tokens
+   Single source of truth. Imported by every preview, every UI kit, every
+   marketing template, every social asset. Mirrors the MUI theme exactly so
+   product code and brand surfaces stay locked together.
+
+   Hue rationale:
+   - 229° (deep indigo-blue) = connector-face logo color (#0124C8 ≈ hsl 229,99%,39%)
+   - 16°  (hot red-orange)  = accent / energy / hero highlight (#FF551F)
+   - 220° (cool gray) = neutral, chosen to harmonise with 229° brand
+   =========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  /* ----- Brand (blue) — anchored on hero #0633F9 (400). 500 = connector-face. */
+  --xg-brand-50:  hsl(229, 100%, 96%);   /* #EBEEFF */
+  --xg-brand-100: hsl(229, 100%, 92%);   /* #D6DEFF */
+  --xg-brand-200: hsl(229,  96%, 82%);   /* #A5B5FD */
+  --xg-brand-300: hsl(229,  94%, 68%);   /* #617DFA */
+  --xg-brand-400: hsl(229,  96%, 50%);   /* #0633F9 — brand.main · lead hero */
+  --xg-brand-500: hsl(229,  99%, 40%);   /* #0126CB — connector-face logo */
+  --xg-brand-600: hsl(229, 100%, 33%);   /* #001FA8 */
+  --xg-brand-700: hsl(229, 100%, 27%);   /* #00198A */
+  --xg-brand-800: hsl(229, 100%, 19%);   /* #001261 */
+  --xg-brand-900: hsl(229,  90%, 12%);   /* #030D3A */
+
+  /* Single canonical "Xingu Blue" — 400 is the lead, the brand-default surface color. */
+  --xg-blue: var(--xg-brand-400);
+  --xg-blue-on: #ffffff;
+
+  /* ----- Accent (red-orange) — anchored on hero #FF551F (400). Used sparingly. */
+  --xg-accent-50:  hsl(14, 100%, 96%);   /* #FFEFEB */
+  --xg-accent-100: hsl(14, 100%, 92%);   /* #FFE0D6 */
+  --xg-accent-200: hsl(14, 100%, 82%);   /* #FFB9A3 */
+  --xg-accent-300: hsl(14, 100%, 70%);   /* #FF8A66 */
+  --xg-accent-400: hsl(14, 100%, 56%);   /* #FF551F — accent.main · hero anchor */
+  --xg-accent-500: hsl(14,  95%, 48%);   /* #EF3C06 */
+  --xg-accent-600: hsl(13,  92%, 40%);   /* #C43108 */
+  --xg-accent-700: hsl(12,  90%, 32%);   /* #9B2608 */
+  --xg-accent-800: hsl(10,  85%, 24%);   /* #711B09 */
+  --xg-accent-900: hsl(8,   80%, 16%);   /* #491108 */
+
+  --xg-orange: var(--xg-accent-400);
+  --xg-orange-on: #ffffff;
+
+  /* ----- Neutral (gray) ------------------------------------------------ */
+  --xg-gray-50:  hsl(220, 35%, 97%);
+  --xg-gray-100: hsl(220, 30%, 94%);
+  --xg-gray-200: hsl(220, 20%, 88%);
+  --xg-gray-300: hsl(220, 20%, 80%);
+  --xg-gray-400: hsl(220, 20%, 65%);
+  --xg-gray-500: hsl(220, 20%, 42%);
+  --xg-gray-600: hsl(220, 20%, 35%);
+  --xg-gray-700: hsl(220, 20%, 25%);
+  --xg-gray-800: hsl(220, 30%,  6%);
+  --xg-gray-900: hsl(220, 35%,  3%);
+
+  /* ----- Green ramp (hsl 152°) — anchored on #129158 (400) */
+  --xg-green-50:  hsl(152, 78%, 96%);   /* #E6FAF1 */
+  --xg-green-100: hsl(152, 75%, 88%);   /* #BCEFD5 */
+  --xg-green-200: hsl(152, 70%, 74%);   /* #7FDBAF */
+  --xg-green-300: hsl(152, 74%, 52%);   /* #22D082 */
+  --xg-green-400: hsl(152, 78%, 32%);   /* #129158 — green.main */
+  --xg-green-500: hsl(152, 82%, 26%);   /* #0B7847 */
+  --xg-green-600: hsl(152, 85%, 21%);   /* #08623A */
+  --xg-green-700: hsl(152, 88%, 16%);   /* #054C2C */
+  --xg-green-800: hsl(152, 90%, 12%);   /* #033921 */
+  --xg-green-900: hsl(152, 92%,  8%);   /* #022616 */
+
+  /* ----- Yellow ramp (hsl 45°) — full scale, replaces / extends prior amber */
+  --xg-yellow-50:  hsl(45, 100%, 96%);  /* #FFF7E0 */
+  --xg-yellow-100: hsl(45, 100%, 90%);  /* #FFEBB5 */
+  --xg-yellow-200: hsl(45,  96%, 78%);  /* #FBDB8E */
+  --xg-yellow-300: hsl(45,  92%, 64%);  /* #F4C549 */
+  --xg-yellow-400: hsl(45,  92%, 52%);  /* #F2B40D — yellow.main */
+  --xg-yellow-500: hsl(43,  92%, 44%);  /* #D89A06 */
+  --xg-yellow-600: hsl(40,  92%, 36%);  /* #B07707 */
+  --xg-yellow-700: hsl(36,  92%, 28%);  /* #875507 */
+  --xg-yellow-800: hsl(32,  92%, 20%);  /* #623906 */
+  --xg-yellow-900: hsl(28,  92%, 13%);  /* #3F2104 */
+
+  /* Backwards-compatible amber aliases (point at the new yellow ramp) */
+  --xg-amber-50:  var(--xg-yellow-50);
+  --xg-amber-200: var(--xg-yellow-200);
+  --xg-amber-400: var(--xg-yellow-400);
+  --xg-amber-500: var(--xg-yellow-500);
+  --xg-amber-800: var(--xg-yellow-800);
+
+  --xg-red-50:  hsl(0, 100%, 97%);
+  --xg-red-100: hsl(0,  92%, 90%);
+  --xg-red-400: hsl(0,  90%, 50%);
+  --xg-red-500: hsl(0,  90%, 38%);
+  --xg-red-800: hsl(0,  95%, 14%);
+
+  /* ----- Semantic surface tokens (light theme, MUI palette) ------------ */
+  --xg-bg-default: hsl(0, 0%, 99%);
+  --xg-bg-paper:   hsl(220, 35%, 97%);
+  --xg-fg-primary:   var(--xg-gray-800);
+  --xg-fg-secondary: var(--xg-gray-600);
+  --xg-fg-disabled:  var(--xg-gray-400);
+  --xg-divider: hsla(220, 20%, 80%, 0.4);
+
+  /* Action overlays (MUI-style alpha layers) */
+  --xg-action-hover:    hsla(220, 20%, 88%, 0.20);
+  --xg-action-selected: hsla(220, 20%, 88%, 0.30);
+  --xg-action-focus:    hsla(229, 99%, 39%, 0.30);
+
+  /* ----- Status ramps — sampled directly from the live MUI primitives
+     used by Chip variants in the running console.
+     Convention: 50 = pill bg, 200 = pill border, 500 = text/icon. */
+
+  /* Success — hsl 120°  (text #207B20, bg #F4FCF3) */
+  --xg-success-50:  hsl(120, 55%, 97%);   /* #F4FCF3 */
+  --xg-success-100: hsl(120, 55%, 88%);   /* #D4F1D2 */
+  --xg-success-200: hsl(120, 50%, 72%);   /* #92D790 */
+  --xg-success-300: hsl(120, 55%, 50%);   /* #39C239 */
+  --xg-success-400: hsl(120, 58%, 35%);   /* #258F25 */
+  --xg-success-500: hsl(120, 59%, 30%);   /* #207B20 */
+  --xg-success-600: hsl(120, 62%, 24%);   /* #186218 */
+  --xg-success-700: hsl(120, 66%, 18%);   /* #114B11 */
+
+  /* Info / Primary — hsl 211° (text #036CD4, bg #E6F3FF, border #98CCFF) */
+  --xg-info-50:  hsl(211, 100%, 95%);     /* #E6F3FF */
+  --xg-info-100: hsl(211, 100%, 88%);     /* #C2E0FF */
+  --xg-info-200: hsl(211, 100%, 80%);     /* #98CCFF */
+  --xg-info-300: hsl(211, 100%, 65%);     /* #4DA6FF */
+  --xg-info-400: hsl(211,  99%, 47%);     /* #027DEB */
+  --xg-info-500: hsl(211,  97%, 42%);     /* #036CD4 */
+  --xg-info-600: hsl(211,  98%, 33%);     /* #0357A7 */
+  --xg-info-700: hsl(211,  98%, 24%);     /* #02437F */
+
+  /* Warning — hsl 45° (text #A27A0A, bg #FAF4E4, border #B6984B) */
+  --xg-warning-50:  hsl(45, 70%, 94%);    /* #FAF4E4 */
+  --xg-warning-100: hsl(45, 65%, 84%);    /* #ECDCA9 */
+  --xg-warning-200: hsl(45, 45%, 50%);    /* #B6984B */
+  --xg-warning-300: hsl(45, 75%, 45%);    /* #C9981E */
+  --xg-warning-400: hsl(45, 88%, 38%);    /* #BC8910 */
+  --xg-warning-500: hsl(45, 92%, 34%);    /* #A27A0A */
+  --xg-warning-600: hsl(45, 95%, 26%);    /* #815C06 */
+  --xg-warning-700: hsl(45, 95%, 18%);    /* #594004 */
+
+  /* Error — hsl 360° (text #8A0807, bg #F7E0E1, border #D9AAA9) */
+  --xg-error-50:  hsl(358, 65%, 93%);     /* #F7E0E1 */
+  --xg-error-100: hsl(358, 40%, 76%);     /* #D9AAA9 */
+  --xg-error-200: hsl(358, 50%, 64%);     /* #C77877 */
+  --xg-error-300: hsl(358, 75%, 50%);     /* #DF2020 */
+  --xg-error-400: hsl(358, 90%, 38%);     /* #B80C0C */
+  --xg-error-500: hsl(358, 93%, 29%);     /* #8A0807 */
+  --xg-error-600: hsl(358, 95%, 22%);     /* #6E0403 */
+  --xg-error-700: hsl(358, 96%, 15%);     /* #4D0202 */
+
+  /* Status aliases */
+  --xg-success: var(--xg-success-500);
+  --xg-warning: var(--xg-warning-500);
+  --xg-danger:  var(--xg-error-500);
+  --xg-info:    var(--xg-info-500);
+
+  /* ----- Type ---------------------------------------------------------- */
+  --xg-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --xg-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Marketing display font alias — same family, but reserve a token so we
+     can swap to a display face later (e.g. PP Neue Machina) without
+     hunting through templates. */
+  --xg-font-display: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* MUI-aligned scale (product) */
+  --xg-fs-h1: 3rem;       /* 48px */
+  --xg-fs-h2: 2.25rem;    /* 36px */
+  --xg-fs-h3: 1.875rem;   /* 30px */
+  --xg-fs-h4: 1.5rem;     /* 24px */
+  --xg-fs-h5: 1.25rem;    /* 20px */
+  --xg-fs-h6: 1.125rem;   /* 18px */
+  --xg-fs-subtitle1: 1.125rem;
+  --xg-fs-subtitle2: 0.875rem;
+  --xg-fs-body:    0.875rem;   /* 14px — MUI default body, dense product UI */
+  --xg-fs-caption: 0.75rem;    /* 12px */
+
+  /* Marketing scale — bigger, bolder. Used outside the product. */
+  --xg-fs-display-xl: 5.5rem;  /* 88px — hero */
+  --xg-fs-display-lg: 4rem;    /* 64px */
+  --xg-fs-display-md: 3rem;    /* 48px */
+  --xg-fs-display-sm: 2.25rem; /* 36px */
+  --xg-fs-marketing-body: 1.0625rem; /* 17px */
+
+  --xg-fw-regular: 400;
+  --xg-fw-medium:  500;
+  --xg-fw-semibold: 600;
+  --xg-fw-bold:    700;
+  --xg-fw-black:   800;
+
+  /* ----- Shape, spacing, shadow --------------------------------------- */
+  --xg-radius:     8px;        /* MUI shape.borderRadius — product default */
+  --xg-radius-sm:  6px;
+  --xg-radius-lg:  10px;       /* alerts, dialogs, toggle groups */
+  --xg-radius-xl:  16px;       /* marketing cards, hero crops */
+  --xg-radius-pill: 999px;     /* chips, marketing CTAs */
+
+  --xg-space-0: 0;
+  --xg-space-1: 4px;
+  --xg-space-2: 8px;
+  --xg-space-3: 12px;
+  --xg-space-4: 16px;
+  --xg-space-5: 20px;
+  --xg-space-6: 24px;
+  --xg-space-8: 32px;
+  --xg-space-10: 40px;
+  --xg-space-12: 48px;
+  --xg-space-16: 64px;
+  --xg-space-24: 96px;
+
+  /* MUI baseShadow — used by all elevated paper */
+  --xg-shadow-base:
+    hsla(220, 30%, 5%, 0.07) 0px 4px 16px 0px,
+    hsla(220, 25%, 10%, 0.07) 0px 8px 16px -5px;
+
+  /* Inner shadow used on contained primary buttons */
+  --xg-shadow-button-primary:
+    inset 0 1px 0 hsla(229, 90%, 60%, 0.4),
+    inset 0 -1px 0 1px hsla(229, 100%, 12%, 0.5);
+
+  /* Inset highlight on Select — gives the slight bevel */
+  --xg-shadow-select-inset:
+    inset 0 1px 0 1px hsla(220, 0%, 100%, 0.6),
+    inset 0 -1px 0 1px hsla(220, 35%, 90%, 0.5);
+}
+
+/* ----- Semantic typography classes (bare-tag styling for HTML cards) -- */
+html { font-family: var(--xg-font-sans); color: var(--xg-fg-primary); -webkit-font-smoothing: antialiased; }
+body { font-size: var(--xg-fs-body); line-height: 1.5; background: var(--xg-bg-default); }
+
+h1, .xg-h1 { font-size: var(--xg-fs-h1); font-weight: var(--xg-fw-semibold); line-height: 1.1; letter-spacing: -0.02em; margin: 0; }
+h2, .xg-h2 { font-size: var(--xg-fs-h2); font-weight: var(--xg-fw-semibold); line-height: 1.15; letter-spacing: -0.015em; margin: 0; }
+h3, .xg-h3 { font-size: var(--xg-fs-h3); font-weight: var(--xg-fw-semibold); line-height: 1.2; margin: 0; }
+h4, .xg-h4 { font-size: var(--xg-fs-h4); font-weight: var(--xg-fw-semibold); line-height: 1.3; margin: 0; }
+h5, .xg-h5 { font-size: var(--xg-fs-h5); font-weight: var(--xg-fw-semibold); margin: 0; }
+h6, .xg-h6 { font-size: var(--xg-fs-h6); font-weight: var(--xg-fw-semibold); margin: 0; }
+p, .xg-body  { font-size: var(--xg-fs-body); }
+.xg-caption { font-size: var(--xg-fs-caption); color: var(--xg-fg-secondary); }
+.xg-subtitle1 { font-size: var(--xg-fs-subtitle1); }
+.xg-subtitle2 { font-size: var(--xg-fs-subtitle2); font-weight: var(--xg-fw-medium); }
+code, kbd, .xg-mono { font-family: var(--xg-font-mono); font-size: 0.8125rem; }
+
+/* Marketing-only display classes (use on hero/landing surfaces, not product) */
+.xg-display-xl { font-family: var(--xg-font-display); font-size: var(--xg-fs-display-xl); font-weight: var(--xg-fw-black); line-height: 0.95; letter-spacing: -0.04em; }
+.xg-display-lg { font-family: var(--xg-font-display); font-size: var(--xg-fs-display-lg); font-weight: var(--xg-fw-bold);  line-height: 1.0;  letter-spacing: -0.035em; }
+.xg-display-md { font-family: var(--xg-font-display); font-size: var(--xg-fs-display-md); font-weight: var(--xg-fw-bold);  line-height: 1.05; letter-spacing: -0.03em; }
+.xg-display-sm { font-family: var(--xg-font-display); font-size: var(--xg-fs-display-sm); font-weight: var(--xg-fw-semibold); line-height: 1.1; letter-spacing: -0.02em; }
+
+/* Eyebrow — small uppercase label used on marketing sections */
+.xg-eyebrow {
+  font-size: 0.75rem;
+  font-weight: var(--xg-fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--xg-brand-500);
+}

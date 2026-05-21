@@ -4,11 +4,13 @@ export interface TrainingSegment {
   id: string;
   durationSeconds: number;
   targetZone: Zone;
+  label?: string;
 }
 
 export interface Training {
   id: string;
   name: string;
+  description?: string;
   segments: TrainingSegment[];
   createdAt: number;
 }
@@ -19,4 +21,5 @@ export interface ZoneConfig {
   minPct: number;
   maxPct: number;
   color: string;
+  hint: string;
 }
