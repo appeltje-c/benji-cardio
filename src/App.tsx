@@ -11,6 +11,8 @@ import Profile from './pages/Profile';
 import Onboarding from './pages/Onboarding';
 import TrainingEditor from './pages/TrainingEditor';
 import TrainingPlayer from './pages/TrainingPlayer';
+import StretchEditor from './pages/StretchEditor';
+import StretchPlayer from './pages/StretchPlayer';
 import { useProfileStore } from './stores/profileStore';
 
 function RequireProfile({ children }: { children: ReactNode }) {
@@ -42,6 +44,8 @@ export default function App() {
           <Route path="/profile"  element={<Layout><Profile /></Layout>} />
           <Route path="/training/:id/edit" element={<TrainingEditor />} />
           <Route path="/player/:id" element={<TrainingPlayer />} />
+          <Route path="/stretch/:id/edit" element={<StretchEditor />} />
+          <Route path="/stretch/player/:id" element={<StretchPlayer />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

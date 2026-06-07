@@ -1,17 +1,22 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import AddIcon from '@mui/icons-material/Add';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
+import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import { useTrainingStore } from '../stores/trainingStore';
+import { useStretchStore } from '../stores/stretchStore';
+import { getStretch } from '../data/stretchLibrary';
 import { formatTime } from '../utils/zones';
 import V3StatusBar from '../components/v3/V3StatusBar';
 import ZoneTag from '../components/v3/ZoneTag';
+
+type Mode = 'cardio' | 'stretch';
 
 function fmtDur(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -23,29 +28,44 @@ function fmtDur(seconds: number) {
 
 export default function Library() {
   const { trainings, addTraining } = useTrainingStore();
+  const { routines, addRoutine } = useStretchStore();
   const navigate = useNavigate();
+
+  const [mode, setMode] = useState<Mode>('cardio');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [newType, setNewType] = useState<Mode>('cardio');
   const [newName, setNewName] = useState('');
+
+  const openCreate = () => {
+    setNewType(mode);
+    setNewName('');
+    setDialogOpen(true);
+  };
 
   const handleCreate = () => {
     if (!newName.trim()) return;
-    const id = addTraining(newName.trim());
-    setNewName('');
+    const name = newName.trim();
     setDialogOpen(false);
-    navigate(`/training/${id}/edit`);
+    setNewName('');
+    if (newType === 'cardio') {
+      const id = addTraining(name);
+      navigate(`/training/${id}/edit`);
+    } else {
+      const id = addRoutine(name);
+      navigate(`/stretch/${id}/edit`);
+    }
   };
 
+  const count = mode === 'cardio' ? trainings.length : routines.length;
+
   return (
-    <div
-      className="v3-shell v3-bg"
-      style={{ position: 'relative', width: '100%', minHeight: '100%' }}
-    >
+    <div className="v3-shell v3-bg" style={{ position: 'relative', width: '100%', minHeight: '100%' }}>
       <V3StatusBar
-        title={`TRAININGS · ${String(trainings.length).padStart(2, '0')}`}
+        title={`LIBRARY · ${String(count).padStart(2, '0')}`}
         action={
           <button
             type="button"
-            onClick={() => setDialogOpen(true)}
+            onClick={openCreate}
             style={{
               width: 32,
               height: 32,
@@ -74,25 +94,18 @@ export default function Library() {
           color: '#fff',
         }}
       >
-        <h1
-          style={{
-            fontSize: 40,
-            fontWeight: 800,
-            letterSpacing: '-0.03em',
-            lineHeight: 0.95,
-            color: '#fff',
-          }}
-        >
+        <h1 style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 0.95, color: '#fff' }}>
           Pick your
           <br />
-          <span style={{ color: 'var(--xg-accent-400)' }}>weapon.</span>
+          <span style={{ color: 'var(--xg-accent-400)' }}>{mode === 'cardio' ? 'weapon.' : 'stretch.'}</span>
         </h1>
 
+        {/* Mode tabs */}
         <div
           className="v3-mono"
           style={{
             display: 'flex',
-            gap: 14,
+            gap: 18,
             fontSize: 11,
             letterSpacing: '0.16em',
             color: 'rgba(255,255,255,0.4)',
@@ -100,177 +113,95 @@ export default function Library() {
             borderBottom: '1px solid rgba(255,255,255,0.08)',
           }}
         >
-          <span
-            style={{
-              color: 'var(--xg-accent-400)',
-              borderBottom: '2px solid var(--xg-accent-400)',
-              paddingBottom: 8,
-              marginBottom: -5,
-            }}
-          >
-            ALL · {trainings.length}
-          </span>
-          <span style={{ opacity: 0.4 }}>FAVORITES</span>
-          <span style={{ opacity: 0.4 }}>RECENT</span>
-        </div>
-
-        {trainings.length === 0 ? (
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '48px 0',
-              color: 'rgba(255,255,255,0.5)',
-            }}
-          >
-            <div
+          {(['cardio', 'stretch'] as Mode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
               className="v3-mono"
               style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                paddingBottom: 8,
+                marginBottom: -5,
                 fontSize: 11,
-                letterSpacing: '0.2em',
-                marginBottom: 12,
+                letterSpacing: '0.16em',
+                fontFamily: 'var(--xg-font-mono)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                color: m === mode ? 'var(--xg-accent-400)' : 'rgba(255,255,255,0.4)',
+                borderBottom: m === mode ? '2px solid var(--xg-accent-400)' : '2px solid transparent',
               }}
             >
-              NO TRAININGS YET
-            </div>
-            <button type="button" onClick={() => setDialogOpen(true)} className="v3-btn v3-btn-primary" style={{ maxWidth: 260, margin: '0 auto' }}>
-              Create your first
+              {m === 'cardio' ? <DirectionsRunIcon sx={{ fontSize: 14 }} /> : <SelfImprovementIcon sx={{ fontSize: 14 }} />}
+              {m === 'cardio' ? `CARDIO · ${trainings.length}` : `STRETCH · ${routines.length}`}
             </button>
-          </div>
+          ))}
+        </div>
+
+        {mode === 'cardio' ? (
+          <CardioList />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {trainings.map((t, idx) => {
-              const total = t.segments.reduce((s, seg) => s + seg.durationSeconds, 0);
-              const peak = t.segments.length
-                ? (Math.max(...t.segments.map((s) => s.targetZone)) as 1 | 2 | 3 | 4 | 5)
-                : 1;
-              const canPlay = t.segments.length > 0;
-              return (
-                <div key={t.id} className="v3-card-strong" style={{ padding: 0, overflow: 'hidden' }}>
-                  <div style={{ padding: '12px 14px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span
-                      className="v3-mono"
-                      style={{
-                        fontSize: 10,
-                        letterSpacing: '0.18em',
-                        color: 'rgba(255,255,255,0.4)',
-                      }}
-                    >
-                      {String(idx + 1).padStart(2, '0')}
-                    </span>
-                    {t.segments.length > 0 && <ZoneTag zone={peak} prefix="PEAK" />}
-                    <span
-                      className="v3-mono"
-                      style={{
-                        marginLeft: 'auto',
-                        fontSize: 10,
-                        letterSpacing: '0.14em',
-                        color: 'rgba(255,255,255,0.5)',
-                      }}
-                    >
-                      {total > 0 ? fmtDur(total) : formatTime(0)}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate(canPlay ? `/player/${t.id}` : `/training/${t.id}/edit`)}
-                    style={{
-                      padding: '6px 14px 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      width: '100%',
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'inherit',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 22,
-                        fontWeight: 800,
-                        letterSpacing: '-0.02em',
-                        color: '#fff',
-                        flex: 1,
-                      }}
-                    >
-                      {t.name}
-                    </div>
-                    <PlayArrowIcon
-                      sx={{ fontSize: 22, color: canPlay ? 'var(--xg-accent-400)' : 'rgba(255,255,255,0.25)' }}
-                    />
-                  </button>
-                  {t.segments.length > 0 && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: 0,
-                        height: 36,
-                        borderTop: '1px solid rgba(255,255,255,0.06)',
-                      }}
-                    >
-                      {t.segments.map((s, i) => (
-                        <div
-                          key={s.id}
-                          style={{
-                            flex: s.durationSeconds,
-                            background: `var(--hr-z${s.targetZone}-solid)`,
-                            opacity: 0.85,
-                            borderRight:
-                              i < t.segments.length - 1 ? '1px solid #0A0B0F' : 'none',
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: 0,
-                      borderTop: '1px solid rgba(255,255,255,0.06)',
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/training/${t.id}/edit`)}
-                      className="v3-mono"
-                      style={{
-                        flex: 1,
-                        padding: '10px 14px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'rgba(255,255,255,0.6)',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        letterSpacing: '0.18em',
-                        cursor: 'pointer',
-                        fontFamily: 'var(--xg-font-mono)',
-                        textAlign: 'left',
-                      }}
-                    >
-                      EDIT
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <StretchList />
         )}
       </div>
 
+      {/* Create dialog with type choice */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>New training</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ pt: 3 }}>
+          <div
+            className="v3-mono"
+            style={{ fontSize: 11, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.6)', marginBottom: 12 }}
+          >
+            WHAT ARE YOU BUILDING?
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+            {(['cardio', 'stretch'] as Mode[]).map((t) => {
+              const active = newType === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setNewType(t)}
+                  style={{
+                    padding: '16px 12px',
+                    borderRadius: 10,
+                    border: `1px solid ${active ? 'var(--xg-accent-400)' : 'rgba(255,255,255,0.16)'}`,
+                    background: active ? 'rgba(255,85,31,0.12)' : 'transparent',
+                    color: active ? 'var(--xg-accent-400)' : 'rgba(255,255,255,0.7)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {t === 'cardio' ? (
+                    <DirectionsRunIcon sx={{ fontSize: 28 }} />
+                  ) : (
+                    <SelfImprovementIcon sx={{ fontSize: 28 }} />
+                  )}
+                  <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.06em' }}>
+                    {t === 'cardio' ? 'Cardio' : 'Stretch'}
+                  </span>
+                  <span style={{ fontSize: 10, opacity: 0.7, textAlign: 'center', lineHeight: 1.3 }}>
+                    {t === 'cardio' ? 'HR-zone intervals' : 'Mobility routine'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           <TextField
             autoFocus
             fullWidth
-            label="Name"
+            label={newType === 'cardio' ? 'Training name' : 'Routine name'}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-            sx={{ mt: 1 }}
           />
         </DialogContent>
         <DialogActions>
@@ -280,6 +211,215 @@ export default function Library() {
           </Button>
         </DialogActions>
       </Dialog>
+    </div>
+  );
+}
+
+function CardioList() {
+  const { trainings } = useTrainingStore();
+  const navigate = useNavigate();
+
+  if (trainings.length === 0) {
+    return <EmptyState label="NO TRAININGS YET" />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {trainings.map((t, idx) => {
+        const total = t.segments.reduce((s, seg) => s + seg.durationSeconds, 0);
+        const peak = t.segments.length
+          ? (Math.max(...t.segments.map((s) => s.targetZone)) as 1 | 2 | 3 | 4 | 5)
+          : 1;
+        const canPlay = t.segments.length > 0;
+        return (
+          <div key={t.id} className="v3-card-strong" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 14px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="v3-mono" style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.4)' }}>
+                {String(idx + 1).padStart(2, '0')}
+              </span>
+              {t.segments.length > 0 && <ZoneTag zone={peak} prefix="PEAK" />}
+              <span
+                className="v3-mono"
+                style={{ marginLeft: 'auto', fontSize: 10, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.5)' }}
+              >
+                {total > 0 ? fmtDur(total) : formatTime(0)}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(canPlay ? `/player/${t.id}` : `/training/${t.id}/edit`)}
+              style={{
+                padding: '6px 14px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontFamily: 'inherit',
+              }}
+            >
+              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: '#fff', flex: 1 }}>
+                {t.name}
+              </div>
+              <PlayArrowIcon sx={{ fontSize: 22, color: canPlay ? 'var(--xg-accent-400)' : 'rgba(255,255,255,0.25)' }} />
+            </button>
+            {t.segments.length > 0 && (
+              <div style={{ display: 'flex', gap: 0, height: 36, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                {t.segments.map((s, i) => (
+                  <div
+                    key={s.id}
+                    style={{
+                      flex: s.durationSeconds,
+                      background: `var(--hr-z${s.targetZone}-solid)`,
+                      opacity: 0.85,
+                      borderRight: i < t.segments.length - 1 ? '1px solid #0A0B0F' : 'none',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 0, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <button
+                type="button"
+                onClick={() => navigate(`/training/${t.id}/edit`)}
+                className="v3-mono"
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--xg-font-mono)',
+                  textAlign: 'left',
+                }}
+              >
+                EDIT
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StretchList() {
+  const { routines } = useStretchStore();
+  const navigate = useNavigate();
+
+  if (routines.length === 0) {
+    return <EmptyState label="NO STRETCH ROUTINES YET" />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {routines.map((r, idx) => {
+        const totalReps = r.segments.reduce((s, seg) => s + seg.reps, 0);
+        const canPlay = r.segments.length > 0;
+        const thumbs = r.segments
+          .map((s) => getStretch(s.exerciseId)?.images[0])
+          .filter(Boolean)
+          .slice(0, 6) as string[];
+        return (
+          <div key={r.id} className="v3-card-strong" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 14px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="v3-mono" style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.4)' }}>
+                {String(idx + 1).padStart(2, '0')}
+              </span>
+              <SelfImprovementIcon sx={{ fontSize: 15, color: 'var(--xg-accent-400)' }} />
+              <span
+                className="v3-mono"
+                style={{ marginLeft: 'auto', fontSize: 10, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.5)' }}
+              >
+                {r.segments.length} EX · {totalReps} REPS
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(canPlay ? `/stretch/player/${r.id}` : `/stretch/${r.id}/edit`)}
+              style={{
+                padding: '6px 14px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontFamily: 'inherit',
+              }}
+            >
+              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: '#fff', flex: 1 }}>
+                {r.name}
+              </div>
+              <PlayArrowIcon sx={{ fontSize: 22, color: canPlay ? 'var(--xg-accent-400)' : 'rgba(255,255,255,0.25)' }} />
+            </button>
+            {thumbs.length > 0 && (
+              <div style={{ display: 'flex', gap: 0, height: 44, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                {thumbs.map((src, i) => (
+                  <img
+                    key={i}
+                    src={src}
+                    alt=""
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRight: i < thumbs.length - 1 ? '1px solid #0A0B0F' : 'none',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 0, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <button
+                type="button"
+                onClick={() => navigate(`/stretch/${r.id}/edit`)}
+                className="v3-mono"
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--xg-font-mono)',
+                  textAlign: 'left',
+                }}
+              >
+                EDIT
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EmptyState({ label }: { label: string }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '48px 0', color: 'rgba(255,255,255,0.5)' }}>
+      <div className="v3-mono" style={{ fontSize: 11, letterSpacing: '0.2em', marginBottom: 12 }}>
+        {label}
+      </div>
+      <div className="v3-mono" style={{ fontSize: 10, letterSpacing: '0.16em', opacity: 0.6 }}>
+        TAP + TO CREATE ONE
+      </div>
     </div>
   );
 }
